@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
 #----------------------------------------------------------------------------------------------------------------------------------
     # Vulnerable: HTTP
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
     
     # NO VULNERABLE: HTTPS (con certificados)
     # app.run(host='0.0.0.0', port=5000, debug=True, ssl_context=('cert.pem', 'key.pem'))
