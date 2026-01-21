@@ -28,18 +28,20 @@ def login():
         password = request.form.get('password','')
 #----------------------------------------------------------------------------------------------------------------------------------
         # VULNERABLE: concatenación directa -> SQL injection
-        query = f"SELECT id, username FROM users WHERE username = '{username}' AND password = '{password}'"
-        cur = get_db().execute(query)
-        user = cur.fetchone()
-        cur.close()
+        # query = f"SELECT id, username FROM users WHERE username = '{username}' AND password = '{password}'"
+        # cur = get_db().execute(query)
         
         # CORREGIDO (NO VULNERABLE):
-        # 1. Parametrización -> NO SQL injection
-        # 2. Se obtiene el hash de la contraseña
+        # Solo con Parametrización:
+        query = "SELECT id, username, password FROM users WHERE username = ? AND password = ?"
+        cur = get_db().execute(query, (username,password))
+
+        # Con Parametrización y hashing en la contraseña (necesario descomentar además el condicional de "if user and check_password_hash(user[2], password):")
         # query = "SELECT id, username, password FROM users WHERE username = ?"
         # cur = get_db().execute(query, (username,))
-        # user = cur.fetchone()
-        # cur.close()
+
+        user = cur.fetchone()
+        cur.close()
 #----------------------------------------------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------------------------------------------
         # VULNERABLE:
@@ -104,7 +106,6 @@ def register():
 if __name__ == '__main__':
     # Si la BD no existe, crearla a partir de schema.sql
     if not os.path.exists(DATABASE):
-        import sqlite3
         with sqlite3.connect(DATABASE) as conn:
             with open('schema.sql', 'r', encoding='utf-8') as f:
                 conn.executescript(f.read())
@@ -112,8 +113,8 @@ if __name__ == '__main__':
 
 #----------------------------------------------------------------------------------------------------------------------------------
     # Vulnerable: HTTP
-    # app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=True)
     
     # NO VULNERABLE: HTTPS (con certificados)
-    app.run(host='0.0.0.0', port=8000, debug=True, ssl_context=('cert.pem', 'key.pem'))
+    #app.run(host='0.0.0.0', port=8000, debug=True, ssl_context=('cert.pem', 'key.pem'))
 #----------------------------------------------------------------------------------------------------------------------------------

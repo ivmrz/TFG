@@ -1,1 +1,2 @@
+#Añadir todos los requirements en un futuro
 Flask==2.2.5
