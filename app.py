@@ -2,9 +2,20 @@ from flask import Flask, request, g, redirect, render_template, session, url_for
 import sqlite3
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import timedelta
 
 app = Flask(__name__)
 app.secret_key = 'dev-secret-key'  # vulnerable: clave fija y corta
+
+# Para que la sesión expire tras 5 minutos de innactividad
+app.config.update(
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=5)
+)
+
+# Para que la cookie de sesión pueda ser robada por XSS
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=False
+)
 
 DATABASE = os.path.join(os.path.dirname(__file__), 'vulnapp.db')
 
@@ -46,6 +57,7 @@ def login():
 #----------------------------------------------------------------------------------------------------------------------------------
         # VULNERABLE:
         if user:
+            session.permanent = True # Sesión que caduca tras 5 minutos de innactividad
             # VULNERABLE: sesión simple, sin flags de seguridad
             session['user_id'] = user[0]
             session['username'] = user[1]
@@ -56,6 +68,7 @@ def login():
 
         # CORREGIDO (NO VULNERABLE): Si el usuario existe y el hash coincide
         # if user and check_password_hash(user[2], password):
+        #     session.permanent = True # Sesión que caduca tras 5 minutos de innactividad
         #     session['user_id'] = user[0]
         #     session['username'] = user[1]
         #     return redirect(url_for('dashboard'))
@@ -65,9 +78,18 @@ def login():
 #----------------------------------------------------------------------------------------------------------------------------------
     return render_template('login.html', msg=msg)
 
+@app.route('/users')
+def users():
+    cur = get_db().execute("SELECT id, username FROM users")
+    users = cur.fetchall()
+    cur.close()
+
+    return render_template('users.html', users=users)
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
+        session.clear()
         return redirect(url_for('login'))
     # VULNERABLE: muestra el username sin escape consciente (template puede ser vulnerable)
     return render_template('dashboard.html', username=session.get('username'))

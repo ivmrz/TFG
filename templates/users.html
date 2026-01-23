@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Usuarios registrados</h2>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>ID</th>
+        <th>Username</th>
+    </tr>
+
+    {% for user in users %}
+    <tr>
+        <td>{{ user[0] }}</td>
+        <!-- ⚠️ VULNERABLE: XSS almacenado -->
+        <td>{{ user[1] | safe }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
