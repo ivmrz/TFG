@@ -1,4 +1,4 @@
-from flask import Flask, request, g, redirect, render_template, session, url_for
+from flask import Flask, request, g, redirect, render_template, session, url_for, send_file
 import sqlite3
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -128,8 +128,7 @@ def register():
 @app.route('/file')
 def file():
     filename = request.args.get('name', '')
-    with open(filename, 'r') as f:
-        return f.read()
+    return send_file(filename)
 
 if __name__ == '__main__':
     # Si la BD no existe, crearla a partir de schema.sql
