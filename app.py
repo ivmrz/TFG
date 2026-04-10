@@ -125,6 +125,12 @@ def register():
             msg = "Error: " + str(e)
     return render_template('register.html', msg=msg)
 
+@app.route('/file')
+def file():
+    filename = request.args.get('name', '')
+    with open(filename, 'r') as f:
+        return f.read()
+
 if __name__ == '__main__':
     # Si la BD no existe, crearla a partir de schema.sql
     if not os.path.exists(DATABASE):
