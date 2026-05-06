@@ -1,0 +1,87 @@
+1. Introducción
+VulnApp es una aplicación web desarrollada con fines educativos para demostrar el funcionamiento de distintas funcionalidades de autenticación, gestión de usuarios y sesiones dentro de un entorno web. La aplicación permite a los usuarios registrarse, iniciar sesión y acceder a un panel privado.
+
+2. Acceso a la aplicación
+Para acceder a la aplicación, abra el navegador web e introduzca la siguiente dirección:
+http://localhost:8000
+
+o, en caso de acceder desde otro equipo de la red:
+http://IP_DEL_SERVIDOR:8000
+
+3. Registro de usuarios
+La aplicación permite crear nuevas cuentas de usuario.
+Pasos:
+- Acceder al apartado Register.
+- Introducir:
+        Nombre de usuario
+        Contraseña
+- Pulsar el botón de registro.
+
+Si el proceso se completa correctamente, aparecerá un mensaje indicando que el usuario ha sido creado.
+
+4. Inicio de sesión
+
+Para autenticarse en la aplicación:
+- Acceder a la página principal.
+- Introducir:
+        Nombre de usuario
+        Contraseña
+- Pulsar el botón Login.
+
+Si las credenciales son correctas, el usuario será redirigido al panel principal.
+
+5. Dashboard
+
+El dashboard es el panel privado de usuario.
+
+Desde esta sección se puede:
+
+- Visualizar el nombre del usuario autenticado.
+- Acceder al listado de usuarios registrados.
+- Descargar documentación disponible.
+- Cerrar sesión.
+
+6. Listado de usuarios
+
+La aplicación incluye una sección donde se muestran los usuarios registrados actualmente en el sistema.
+
+La información visible incluye:
+
+- ID del usuario
+- Nombre de usuario
+
+7. Descarga de archivos
+
+La aplicación permite descargar determinados archivos disponibles en el servidor mediante enlaces habilitados en el dashboard.
+
+Ejemplo:
+/file?name=manual.pdf
+
+8. Recomendaciones de uso
+- Utilizar contraseñas robustas.
+- No compartir las credenciales de acceso.
+- Cerrar sesión al finalizar el uso de la aplicación.
+- Evitar acceder desde redes no confiables.
+
+9. Resolución de problemas
+Error al iniciar sesión
+
+Verifique:
+- Que el usuario exista.
+- Que la contraseña introducida sea correcta.
+- Archivo no encontrado
+
+Compruebe:
+- Que el archivo solicitado exista en el servidor.
+- Que el nombre introducido sea correcto.
+
+10. Tecnologías utilizadas
+
+La aplicación ha sido desarrollada utilizando:
+- Python
+- Flask
+- SQLite
+- HTML/CSS
+
+11. Finalidad educativa
+Esta aplicación ha sido desarrollada exclusivamente con fines educativos y de investigación en ciberseguridad, permitiendo analizar diferentes vulnerabilidades web y sus correspondientes medidas de mitigación.

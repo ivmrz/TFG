@@ -128,7 +128,7 @@ def register():
 @app.route('/file')
 def file():
     filename = request.args.get('name', '')
-    return send_file(filename)
+    return send_file(filename, as_attachment=True)
 
 if __name__ == '__main__':
     # Si la BD no existe, crearla a partir de schema.sql
