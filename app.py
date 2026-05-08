@@ -1,4 +1,4 @@
-from flask import Flask, request, g, redirect, render_template, session, url_for, send_file
+from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
 import sqlite3
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -44,8 +44,8 @@ def login():
         
         # CORREGIDO (NO VULNERABLE):
         # Solo con Parametrización:
-        #query = "SELECT id, username, password FROM users WHERE username = ? AND password = ?"
-        #cur = get_db().execute(query, (username,password))
+        # query = "SELECT id, username, password FROM users WHERE username = ? AND password = ?"
+        # cur = get_db().execute(query, (username,password))
 
         # Con Parametrización y hashing en la contraseña (necesario descomentar además el condicional de "if user and check_password_hash(user[2], password):")
         query = "SELECT id, username, password FROM users WHERE username = ?"
@@ -73,7 +73,7 @@ def login():
             session['username'] = user[1]
             return redirect(url_for('dashboard'))
         else:
-            # Evitar XSS: NO reflejar el nombre de usuario en el mensaje
+            # CORREGIDO (NO VULNERABLE): No se refleja el nombre de usuario en el mensaje
             msg = "Login fallido."
 #----------------------------------------------------------------------------------------------------------------------------------
     return render_template('login.html', msg=msg)
@@ -91,7 +91,6 @@ def dashboard():
     if 'user_id' not in session:
         session.clear()
         return redirect(url_for('login'))
-    # VULNERABLE: muestra el username sin escape consciente (template puede ser vulnerable)
     return render_template('dashboard.html', username=session.get('username'))
 
 @app.route('/logout')
@@ -127,8 +126,29 @@ def register():
 
 @app.route('/file')
 def file():
+#----------------------------------------------------------------------------------------------------------------------------------    
+    # VULNERABLE: Posible A01
+    # filename = request.args.get('name', '')
+    # return send_file(filename, as_attachment=True)
+
+    # CORREGIDO (NO VULNERABLE):
+    # Requerir autenticación
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Obtener parámetro
     filename = request.args.get('name', '')
-    return send_file(filename, as_attachment=True)
+
+    # Permitir SOLO manual.txt
+    if filename != 'manual.txt':
+        abort(403)
+
+    # Ruta absoluta segura
+    safe_path = os.path.join(os.path.dirname(__file__), 'manual.txt')
+
+    # Enviar archivo
+    return send_file(safe_path, as_attachment=True)
+#----------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
     # Si la BD no existe, crearla a partir de schema.sql
@@ -139,9 +159,9 @@ if __name__ == '__main__':
         print("Base de datos creada: vulnapp.db")
 
 #----------------------------------------------------------------------------------------------------------------------------------
-    # Vulnerable: HTTP
+    # VULNERABLE: HTTP
     app.run(host='0.0.0.0', port=8000, debug=True)
     
-    # NO VULNERABLE: HTTPS (con certificados)
+    # CORREGIDO (NO VULNERABLE): HTTPS (con certificados)
     #app.run(host='0.0.0.0', port=8000, debug=True, ssl_context=('cert.pem', 'key.pem'))
 #----------------------------------------------------------------------------------------------------------------------------------
