@@ -44,37 +44,37 @@ def login():
         
         # CORREGIDO (NO VULNERABLE):
         # Solo con Parametrización:
-        query = "SELECT id, username, password FROM users WHERE username = ? AND password = ?"
-        cur = get_db().execute(query, (username,password))
+        #query = "SELECT id, username, password FROM users WHERE username = ? AND password = ?"
+        #cur = get_db().execute(query, (username,password))
 
         # Con Parametrización y hashing en la contraseña (necesario descomentar además el condicional de "if user and check_password_hash(user[2], password):")
-        # query = "SELECT id, username, password FROM users WHERE username = ?"
-        # cur = get_db().execute(query, (username,))
+        query = "SELECT id, username, password FROM users WHERE username = ?"
+        cur = get_db().execute(query, (username,))
 
         user = cur.fetchone()
         cur.close()
 #----------------------------------------------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------------------------------------------
         # VULNERABLE:
-        if user:
-            session.permanent = True # Sesión que caduca tras 5 minutos de innactividad
-            # VULNERABLE: sesión simple, sin flags de seguridad
-            session['user_id'] = user[0]
-            session['username'] = user[1]
-            return redirect(url_for('dashboard'))
-        else:
-            # VULNERABLE: refleja el username en el mensaje -> XSS posible
-            msg = "Login fallido para: " + username
-
-        # CORREGIDO (NO VULNERABLE): Si el usuario existe y el hash coincide
-        # if user and check_password_hash(user[2], password):
+        # if user:
         #     session.permanent = True # Sesión que caduca tras 5 minutos de innactividad
+        #     # VULNERABLE: sesión simple, sin flags de seguridad
         #     session['user_id'] = user[0]
         #     session['username'] = user[1]
         #     return redirect(url_for('dashboard'))
         # else:
-        #     # Evitar XSS: NO reflejar el nombre de usuario en el mensaje
-        #     msg = "Login fallido."
+        #     # VULNERABLE: refleja el username en el mensaje -> XSS posible
+        #     msg = "Login fallido para: " + username
+
+        # CORREGIDO (NO VULNERABLE): Si el usuario existe y el hash coincide
+        if user and check_password_hash(user[2], password):
+            session.permanent = True # Sesión que caduca tras 5 minutos de innactividad
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            return redirect(url_for('dashboard'))
+        else:
+            # Evitar XSS: NO reflejar el nombre de usuario en el mensaje
+            msg = "Login fallido."
 #----------------------------------------------------------------------------------------------------------------------------------
     return render_template('login.html', msg=msg)
 
@@ -107,19 +107,19 @@ def register():
         password = request.form.get('password', '')
 #----------------------------------------------------------------------------------------------------------------------------------   
         # VULNERABLE: sin sanitizar ni hash
-        query = f"INSERT INTO users (username, password) VALUES ('{username}', '{password}')"
-        try: 
-            get_db().execute(query) 
-            get_db().commit() 
-            msg = f"Usuario {username} creado correctamente."
+        # query = f"INSERT INTO users (username, password) VALUES ('{username}', '{password}')"
+        # try: 
+        #     get_db().execute(query) 
+        #     get_db().commit() 
+        #     msg = f"Usuario {username} creado correctamente."
         
         # CORREGIDO (NO VULNERABLE): usar hash y parametrización
-        # hashed_password = generate_password_hash(password)
-        # try:
-        #     query = "INSERT INTO users (username, password) VALUES (?, ?)"
-        #     get_db().execute(query, (username, hashed_password))
-        #     get_db().commit()
-        #     msg = f"Usuario {username} creado correctamente."
+        hashed_password = generate_password_hash(password)
+        try:
+            query = "INSERT INTO users (username, password) VALUES (?, ?)"
+            get_db().execute(query, (username, hashed_password))
+            get_db().commit()
+            msg = f"Usuario {username} creado correctamente."
 #----------------------------------------------------------------------------------------------------------------------------------
         except Exception as e:
             msg = "Error: " + str(e)
