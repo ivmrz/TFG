@@ -128,26 +128,26 @@ def register():
 def file():
 #----------------------------------------------------------------------------------------------------------------------------------    
     # VULNERABLE: Posible A01
-    # filename = request.args.get('name', '')
-    # return send_file(filename, as_attachment=True)
+    filename = request.args.get('name', '')
+    return send_file(filename, as_attachment=True)
 
     # CORREGIDO (NO VULNERABLE):
     # Requerir autenticación
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    # if 'user_id' not in session:
+    #     return redirect(url_for('login'))
 
-    # Obtener parámetro
-    filename = request.args.get('name', '')
+    # # Obtener parámetro
+    # filename = request.args.get('name', '')
 
-    # Permitir SOLO manual.txt
-    if filename != 'manual.txt':
-        abort(403)
+    # # Permitir SOLO manual.txt
+    # if filename != 'manual.txt':
+    #     abort(403)
 
-    # Ruta absoluta segura
-    safe_path = os.path.join(os.path.dirname(__file__), 'manual.txt')
+    # # Ruta absoluta segura
+    # safe_path = os.path.join(os.path.dirname(__file__), 'manual.txt')
 
-    # Enviar archivo
-    return send_file(safe_path, as_attachment=True)
+    # # Enviar archivo
+    # return send_file(safe_path, as_attachment=True)
 #----------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
