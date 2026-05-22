@@ -1,10 +1,26 @@
 from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
 import sqlite3
 import os
+import logging
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
 
 app = Flask(__name__)
+
+#----------------------------------------------------------------------------------------------------------------------------------
+
+# Monitoreo de logs
+security_logger = logging.getLogger("security")
+security_logger.setLevel(logging.WARNING)
+handler = logging.FileHandler("security.log")
+formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s'
+)
+handler.setFormatter(formatter)
+security_logger.addHandler(handler)
+
+#----------------------------------------------------------------------------------------------------------------------------------
+
 app.secret_key = 'dev-secret-key'  # vulnerable: clave fija y corta
 
 # Para que la sesión expire tras 5 minutos de innactividad
@@ -128,26 +144,30 @@ def register():
 def file():
 #----------------------------------------------------------------------------------------------------------------------------------    
     # VULNERABLE: Posible A01
-    filename = request.args.get('name', '')
-    return send_file(filename, as_attachment=True)
+    # filename = request.args.get('name', '')
+    # return send_file(filename, as_attachment=True)
 
     # CORREGIDO (NO VULNERABLE):
     # Requerir autenticación
-    # if 'user_id' not in session:
-    #     return redirect(url_for('login'))
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
 
-    # # Obtener parámetro
-    # filename = request.args.get('name', '')
+    # Obtener parámetro
+    filename = request.args.get('name', '')
 
-    # # Permitir SOLO manual.txt
-    # if filename != 'manual.txt':
-    #     abort(403)
+    # Permitir SOLO manual.txt
+    if filename != 'manual.txt':
+        security_logger.warning(
+            f"[A01 DETECTADO] Intento de acceso no autorizado "
+            f"al archivo '{filename}' desde IP {request.remote_addr}"
+        )
+        abort(403)
 
-    # # Ruta absoluta segura
-    # safe_path = os.path.join(os.path.dirname(__file__), 'manual.txt')
+    # Ruta absoluta segura
+    safe_path = os.path.join(os.path.dirname(__file__), 'manual.txt')
 
-    # # Enviar archivo
-    # return send_file(safe_path, as_attachment=True)
+    # Enviar archivo
+    return send_file(safe_path, as_attachment=True)
 #----------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
