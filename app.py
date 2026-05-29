@@ -2,6 +2,7 @@ from flask import Flask, request, g, redirect, render_template, session, url_for
 import sqlite3
 import os
 import logging
+import requests
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
 
@@ -96,6 +97,8 @@ def login():
 
 @app.route('/users')
 def users():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     cur = get_db().execute("SELECT id, username FROM users")
     users = cur.fetchall()
     cur.close()
@@ -169,6 +172,14 @@ def file():
     # Enviar archivo
     return send_file(safe_path, as_attachment=True)
 #----------------------------------------------------------------------------------------------------------------------------------
+
+@app.route('/fetch')
+def fetch():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    url = request.args.get('url', '')
+    response = requests.get(url)
+    return response.text
 
 if __name__ == '__main__':
     # Si la BD no existe, crearla a partir de schema.sql

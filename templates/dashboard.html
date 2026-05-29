@@ -5,11 +5,29 @@
     <h2>Bienvenido, {{ username }}</h2>
     <p>Esta es tu zona privada.</p>
     <p>Aquí podrías ver tus datos, mensajes, etc.</p>
+<!--------------------------------------------------------------------------------------------------------------->
+    <!-- A07 -->
     <p class="mt-3">
       <a href="/file?name=manual.txt" class="btn btn-primary">
         Descargar manual de usuario
       </a>
     </p>
+<!--------------------------------------------------------------------------------------------------------------->
+    <!-- A10 -->
+    <hr>
+    <h4>Vista previa de enlaces</h4>
+    <form action="/fetch" method="get">
+      <input
+        type="text"
+        name="url"
+        class="form-control"
+        placeholder="https://example.com">
+      <button class="btn btn-primary mt-2">
+        Obtener contenido
+      </button>
+    </form>
+    <br>
+<!--------------------------------------------------------------------------------------------------------------->
     <form method="get">
       <label>Mensaje público:</label>
       <input type="text" name="msg" class="form-control" placeholder="Escribe algo...">
