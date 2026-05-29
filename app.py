@@ -181,6 +181,17 @@ def fetch():
     response = requests.get(url)
     return response.text
 
+@app.route('/internal')
+def internal():
+    # Solo accesible desde localhost
+    if request.remote_addr != '127.0.0.1':
+        abort(403)
+    return """
+    <h2>Panel interno</h2>
+    <p>Backup database: vulnapp.db</p>
+    <p>Admin token: SECRET-ADMIN-KEY</p>
+    """
+
 if __name__ == '__main__':
     # Si la BD no existe, crearla a partir de schema.sql
     if not os.path.exists(DATABASE):
