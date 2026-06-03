@@ -39,6 +39,8 @@ Desde esta sección se puede:
 - Visualizar el nombre del usuario autenticado.
 - Acceder al listado de usuarios registrados.
 - Descargar documentación disponible.
+- Previsualizar webs.
+- Enviar y recibir mensajes.
 - Cerrar sesión.
 
 6. Listado de usuarios
@@ -50,12 +52,19 @@ La información visible incluye:
 - ID del usuario
 - Nombre de usuario
 
-7. Descarga de archivos
+7. Descarga de archivos, previsualización web y envío de mensajes (Dashboard)
 
-La aplicación permite descargar determinados archivos disponibles en el servidor mediante enlaces habilitados en el dashboard.
+La aplicación permite descargar este manual.txt de la web mediante un enlaces habilitado.
 
 Ejemplo:
 /file?name=manual.pdf
+
+La aplicación permite previsualizar enlaces que se introduzcan en el propio formulario de enlaces habilitado.
+
+Ejemplo:
+https://example.com
+
+La aplicación permite enviar y recibir mensajes mediante una barra de texto habilitada.
 
 8. Recomendaciones de uso
 - Utilizar contraseñas robustas.
