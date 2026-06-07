@@ -1,10 +1,11 @@
-from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
 import sqlite3
 import os
 import logging
 import requests
+from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 
@@ -178,7 +179,22 @@ def fetch():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     url = request.args.get('url', '')
-    response = requests.get(url)
+#----------------------------------------------------------------------------------------------------------------------------------
+    # VULNERABLE: Posible SSRF    
+    # response = requests.get(url)
+    
+    # CORREGIDO (NO VULNERABLE):
+    parsed = urlparse(url)
+
+    # Se bloquean hosts no permitidos
+    blocked_hosts = [
+        "127.0.0.1",
+        "localhost"
+    ]
+    if parsed.hostname in blocked_hosts:
+        abort(403)
+    response = requests.get(url, timeout=5)
+#----------------------------------------------------------------------------------------------------------------------------------
     return response.text
 
 @app.route('/internal')
