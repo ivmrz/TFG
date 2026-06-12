@@ -117,7 +117,7 @@ def register():
         password = request.form.get('password', '')
         try:
             # ==============================
-            # VULNERABLE
+            # VULNERABLE: Posible SQL INJECTION
             # ==============================
             if not SecurityConfig.SQL_INJECTION_PROTECTION:
                 if SecurityConfig.PASSWORD_HASHING:
@@ -128,7 +128,7 @@ def register():
                 get_db().execute(query)
 
             # ==============================
-            # CORREGIDO
+            # CORREGIDO: Aplicando parametrización
             # ==============================
             else:
                 if SecurityConfig.PASSWORD_HASHING:
@@ -153,9 +153,17 @@ def login():
         password = request.form.get('password', '')
         try:
             # ==================================================
-            # SQL INJECTION
+            # VULNERABLE: Posible SQL INJECTION
             # ==================================================
-            if SecurityConfig.SQL_INJECTION_PROTECTION:
+            if not SecurityConfig.SQL_INJECTION_PROTECTION:         # Si SQL_INJECTION_PROTECTION está desactivado entonces el hashing no funciona
+                # Consulta vulnerable
+                query = f"SELECT id, username FROM users WHERE username = '{username}' AND password = '{password}'"
+                cur = get_db().execute(query)
+
+            # ==================================================
+            # CORREGIDO: Aplicando parametrización
+            # ==================================================
+            else:
                 # Consulta segura
                 if SecurityConfig.PASSWORD_HASHING:
                     query = "SELECT id, username, password FROM users WHERE username = ?"
@@ -163,24 +171,15 @@ def login():
                 else:
                     query = "SELECT id, username FROM users WHERE username = ? AND password = ?"
                     cur = get_db().execute(query, (username, password))
-
-            else:
-                # Consulta vulnerable
-                if SecurityConfig.PASSWORD_HASHING:
-                    query = f"SELECT id, username, password FROM users WHERE username = '{username}'"
-                else:
-                    query = f"SELECT id, username FROM users WHERE username = '{username}' AND password = '{password}'"
-                cur = get_db().execute(query)
-
             user = cur.fetchone()
             cur.close()
 
             # ==================================================
-            # AUTENTICACIÓN
+            # AUTENTICACIÓN: Con o sin aplicar Hashing
             # ==================================================
             authenticated = False
 
-            if SecurityConfig.PASSWORD_HASHING:
+            if SecurityConfig.PASSWORD_HASHING and SecurityConfig.SQL_INJECTION_PROTECTION:
                 if user and check_password_hash(user[2], password):
                     authenticated = True
             else:
@@ -191,7 +190,7 @@ def login():
             # LOGIN CORRECTO
             # ==================================================
             if authenticated:
-                session.permanent = True               # Aplica el lifetime de la sesión
+                session.permanent = True               # Pone en funcionamiento el lifetime de la sesión
                 session['user_id'] = user[0]
                 session['username'] = user[1]
                 return redirect(url_for('dashboard'))
@@ -230,7 +229,7 @@ def users():
 @app.route('/file')
 def file():
     # ==================================================
-    # VULNERABLE
+    # VULNERABLE: Permite descargar cualquier archivo y sin autenticación
     # ==================================================
     if not SecurityConfig.FILE_ACCESS_PROTECTION:
         filename = request.args.get('name', '')
@@ -240,7 +239,7 @@ def file():
         return send_file(filename, as_attachment=True)
 
     # ==================================================
-    # CORREGIDO
+    # CORREGIDO: Solo permite descargar manual.txt y se requiere autenticación
     # ==================================================
     # Requerir autenticación
     if 'user_id' not in session:
@@ -265,14 +264,14 @@ def fetch():
     url = request.args.get('url', '')
 
     # ==================================================
-    # VULNERABLE
+    # VULNERABLE: Permite acceder a cualquier URL (Incluido localhost)
     # ==================================================
     if not SecurityConfig.SSRF_PROTECTION:
         response = requests.get(url)
         return response.text
 
     # ==================================================
-    # CORREGIDO
+    # CORREGIDO: Bloquea algunos hosts sensibles
     # ==================================================
     parsed = urlparse(url)
     blocked_hosts = [
@@ -318,14 +317,14 @@ if __name__ == '__main__':
         print("Base de datos creada: vulnapp.db")
 
     # ==================================================
-    # VULNERABLE
+    # VULNERABLE: Protocolo HTTP
     # ==================================================
     if not SecurityConfig.HTTPS_PROTECTION:
         print("[MODO VULNERABLE] Aplicación ejecutándose en HTTP")
         app.run(host='0.0.0.0', port=8000, debug=True)
 
     # ==================================================
-    # CORREGIDO
+    # CORREGIDO: Protocolo HTTPS con certificados
     # ==================================================
     else:
         print("[MODO SEGURO] Aplicación ejecutándose en HTTPS")
