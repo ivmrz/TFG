@@ -12,7 +12,7 @@
     {% for user in users %}
     <tr>
         <td>{{ user[0] }}</td>
-        <!-- ⚠️ VULNERABLE: XSS almacenado -->
+        <!-- Posible XSS almacenado -->
         <td>{{ user[1] | safe }}</td>
     </tr>
     {% endfor %}
