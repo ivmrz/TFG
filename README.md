@@ -60,45 +60,25 @@ user / password
 La aplicación incluye versiones corregidas de las vulnerabilidades para su comparación y estudio.
 
 ## Estructura del proyecto
-
 TFG/
-
 │
-
 ├── SecLists/
-
 ├── static/
-
-    ├── style.css
-
+│ └── style.css
 ├── templates/
-
-    ├── base.html
-
-    ├── dashboard.html
-
-    ├── login.html
-
-    ├── register.html
-
-    ├── users.html
-
+│ ├── base.html
+│ ├── dashboard.html
+│ ├── login.html
+│ ├── register.html
+│ └── users.html
 ├── README.md
-
 ├── VulnApp.py
-
 ├── cert.pem
-
 ├── key.pem
-
 ├── manual.txt
-
 ├── requirements.txt
-
 ├── schema.sql
-
 ├── security.log
-
 └── vulnapp.db
 
 ## Autor
