@@ -40,19 +40,22 @@ No debe desplegarse en entornos de producción ni exponerse a Internet.
 
 Con el repositorio clonado o descargado:
 
-python -m venv venv
-source venv/bin/activate   # Linux/Mac
-venv\Scripts\activate      # Windows
+1. python -m venv venv
 
-pip install -r requirements.txt
+2. source venv/bin/activate   # Linux/Mac
 
-python VulnApp.py
+2. venv\Scripts\activate      # Windows
 
-La aplicación estará disponible en: http://localhost:8000
+3. pip install -r requirements.txt
+
+4. python VulnApp.py
+
+La aplicación estará disponible en: http://localhost:8000 o https://localhost:8000
 
 ## Usuarios por defecto
 
 admin / admin123
+
 user / password
 
 ## Modo seguro
@@ -62,28 +65,49 @@ La aplicación incluye versiones corregidas de las vulnerabilidades para su comp
 ## Estructura del proyecto
 
 TFG/
+
 │
+
 ├── SecLists/
+
 ├── static/
+
     ├── style.css
+
 ├── templates/
+
     ├── base.html
+
     ├── dashboard.html
+
     ├── login.html
+
     ├── register.html
+
     ├── users.html
+
 ├── README.md
+
 ├── VulnApp.py
+
 ├── cert.pem
+
 ├── key.pem
+
 ├── manual.txt
+
 ├── requirements.txt
+
 ├── schema.sql
+
 ├── security.log
+
 └── vulnapp.db
 
 ## Autor
 
 Nombre: Iván Merchán Ruiz
+
 NIA: 100451135
+
 Correo: 100451135@alumnos.uc3m.es
