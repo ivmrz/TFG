@@ -6,7 +6,8 @@ Este proyecto ha sido diseñado con fines educativos dentro del contexto de un T
 
 ## Aviso importante
 
-Esta aplicación contiene vulnerabilidades intencionadas.  
+Esta aplicación contiene vulnerabilidades intencionadas.
+
 No debe desplegarse en entornos de producción ni exponerse a Internet.
 
 ## Objetivos del proyecto
@@ -40,15 +41,11 @@ No debe desplegarse en entornos de producción ni exponerse a Internet.
 
 Con el repositorio clonado o descargado:
 
-1. python -m venv venv
-
-2. source venv/bin/activate   # Linux/Mac
-
-2. venv\Scripts\activate      # Windows
-
-3. pip install -r requirements.txt
-
-4. python VulnApp.py
+- python -m venv venv
+- source venv/bin/activate   # Linux/Mac
+- venv\Scripts\activate      # Windows
+- pip install -r requirements.txt
+- python VulnApp.py
 
 La aplicación estará disponible en: http://localhost:8000 o https://localhost:8000
 
