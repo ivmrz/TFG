@@ -1,2 +1,4 @@
-#Añadir todos los requirements en un futuro
-Flask==2.2.5
+# Ejecuta en el venv el comando "pip install -r requirements.txt" para instalar las librerías necesarias
+Flask==3.1.2
+requests==2.34.2
+Werkzeug==3.1.3
