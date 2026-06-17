@@ -60,6 +60,8 @@ user / password
 La aplicación incluye versiones corregidas de las vulnerabilidades para su comparación y estudio.
 
 ## Estructura del proyecto
+
+```
 TFG/
 │
 ├── SecLists/
@@ -80,6 +82,7 @@ TFG/
 ├── schema.sql
 ├── security.log
 └── vulnapp.db
+```
 
 ## Autor
 
