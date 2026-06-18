@@ -64,6 +64,10 @@ La aplicación incluye versiones corregidas de las vulnerabilidades para su comp
 ```
 TFG/
 │
+├── Pruebas/
+│ ├── A05_evil.html
+│ ├── Ejemplo análisis profesional de CVEs.xlsx
+│ └── Prueba_A08_Software and Data Integrity Failures.txt
 ├── SecLists/
 ├── static/
 │ └── style.css
