@@ -1,0 +1,1 @@
+Esto es la prueba para comprobar que no se valida si el archivo adjunto es realmente una imagen, lo cual es un ejemplo claro de vulnerabilidad A01 – Broken Access Control.

