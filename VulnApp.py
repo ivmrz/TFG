@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import hashlib
 import logging
 import requests
 from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
@@ -21,10 +22,12 @@ class SecurityConfig:
     SESSION_COOKIE_PROTECTION = False
     # Establecer que la sesión sea casi permanente (SESSION_LIFETIME_PROTECTION = False) o no (SESSION_LIFETIME_PROTECTION = True)
     SESSION_LIFETIME_PROTECTION = SECURE_MODE
+    # Usar contraseñas en texto plano (PASSWORD_HASHING = False) o hasheadas con scrypt (PASSWORD_HASHING = True y CRYPTO_PROTECTION = True)
+    PASSWORD_HASHING = SECURE_MODE
+    # Usar contraseñas sin salt (CRYPTO_PROTECTION = False y PASSWORD_HASHING = True) o hasheadas con scrypt (CRYPTO_PROTECTION = True y PASSWORD_HASHING = True)
+    CRYPTO_PROTECTION = SECURE_MODE
     # Permitir SQL_Injection (SQL_INJECTION_PROTECTION = False) o no (SQL_INJECTION_PROTECTION = True)
     SQL_INJECTION_PROTECTION = SECURE_MODE
-    # Usar contraseñas en texto plano (PASSWORD_HASHING = False) o hasheadas (PASSWORD_HASHING = True)
-    PASSWORD_HASHING = SECURE_MODE
     # Mensaje de login inseguro (LOGIN_MESSAGE_PROTECTION = False) o seguro (LOGIN_MESSAGE_PROTECTION = True) cuando se falle
     LOGIN_MESSAGE_PROTECTION = SECURE_MODE
     # Permitir descargar cualquier archivo (FILE_ACCESS_PROTECTION = False) o no (FILE_ACCESS_PROTECTION = True)
@@ -116,14 +119,20 @@ def register():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
         try:
+            if not SecurityConfig.PASSWORD_HASHING:
+                # Texto plano
+                stored_password = password
+            elif SecurityConfig.CRYPTO_PROTECTION:
+                # Werkzeug scrypt
+                stored_password = generate_password_hash(password)
+            else:
+                # MD5
+                stored_password = hashlib.md5(password.encode()).hexdigest()
+
             # ==============================
             # VULNERABLE: Posible SQL INJECTION
             # ==============================
             if not SecurityConfig.SQL_INJECTION_PROTECTION:
-                if SecurityConfig.PASSWORD_HASHING:
-                    stored_password = generate_password_hash(password)
-                else:
-                    stored_password = password
                 query = f"INSERT INTO users (username, password) VALUES ('{username}', '{stored_password}')"
                 get_db().execute(query)
 
@@ -131,10 +140,6 @@ def register():
             # CORREGIDO: Aplicando parametrización
             # ==============================
             else:
-                if SecurityConfig.PASSWORD_HASHING:
-                    stored_password = generate_password_hash(password)
-                else:
-                    stored_password = password
                 query = "INSERT INTO users (username, password) VALUES (?, ?)"
                 get_db().execute(query, (username, stored_password))
 
@@ -165,12 +170,12 @@ def login():
             # ==================================================
             else:
                 # Consulta segura
-                if SecurityConfig.PASSWORD_HASHING:
-                    query = "SELECT id, username, password FROM users WHERE username = ?"
-                    cur = get_db().execute(query, (username,))
-                else:
+                if not SecurityConfig.PASSWORD_HASHING:
                     query = "SELECT id, username FROM users WHERE username = ? AND password = ?"
                     cur = get_db().execute(query, (username, password))
+                else:
+                    query = "SELECT id, username, password FROM users WHERE username = ?"
+                    cur = get_db().execute(query, (username,))
             user = cur.fetchone()
             cur.close()
 
@@ -179,11 +184,18 @@ def login():
             # ==================================================
             authenticated = False
 
-            if SecurityConfig.PASSWORD_HASHING and SecurityConfig.SQL_INJECTION_PROTECTION:
+            if not SecurityConfig.PASSWORD_HASHING or not SecurityConfig.SQL_INJECTION_PROTECTION:
+                # Texto plano
+                if user:
+                    authenticated = True
+            elif SecurityConfig.CRYPTO_PROTECTION:
+                # Werkzeug scrypt
                 if user and check_password_hash(user[2], password):
                     authenticated = True
             else:
-                if user:
+                # MD5
+                hashed = hashlib.md5(password.encode()).hexdigest()
+                if user and user[2] == hashed:
                     authenticated = True
 
             # ==================================================
