@@ -160,7 +160,7 @@ def login():
             # ==================================================
             # VULNERABLE: Posible SQL INJECTION
             # ==================================================
-            if not SecurityConfig.SQL_INJECTION_PROTECTION:         # Si SQL_INJECTION_PROTECTION está desactivado entonces el hashing no funciona
+            if not SecurityConfig.SQL_INJECTION_PROTECTION:         # Si SQL_INJECTION_PROTECTION = False, usuarios con hashing no funcionan
                 # Consulta vulnerable
                 query = f"SELECT id, username FROM users WHERE username = '{username}' AND password = '{password}'"
                 cur = get_db().execute(query)
