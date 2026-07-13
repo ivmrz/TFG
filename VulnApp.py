@@ -1,6 +1,8 @@
 import sqlite3
 import os
 import hashlib
+import pyotp
+import qrcode
 import logging
 import requests
 from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
@@ -32,6 +34,8 @@ class SecurityConfig:
     LOGIN_MESSAGE_PROTECTION = SECURE_MODE
     # Permitir descargar cualquier archivo (FILE_ACCESS_PROTECTION = False) o no (FILE_ACCESS_PROTECTION = True)
     FILE_ACCESS_PROTECTION = SECURE_MODE
+    # Permitir acceso sin 2FA (TWO_FACTOR_AUTHENTICATION = False) o con 2FA (TWO_FACTOR_AUTHENTICATION = True)
+    TWO_FACTOR_AUTHENTICATION = SECURE_MODE
     # Permitir acceder a cualquier dirección url (SSRF_PROTECTION = False) o no (SSRF_PROTECTION = True)
     SSRF_PROTECTION = SECURE_MODE
     # Lanzar la app con protocolo HTTP (HTTPS_PROTECTION = False) o HTTPS (HTTPS_PROTECTION = True)
@@ -128,22 +132,37 @@ def register():
             else:
                 # MD5
                 stored_password = hashlib.md5(password.encode()).hexdigest()
+            
+            if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
+                # Se genera el secreto para el 2FA
+                otp_secret = pyotp.random_base32()
+            else:
+                otp_secret = None
 
             # ==============================
             # VULNERABLE: Posible SQL INJECTION
             # ==============================
             if not SecurityConfig.SQL_INJECTION_PROTECTION:
-                query = f"INSERT INTO users (username, password) VALUES ('{username}', '{stored_password}')"
+                query = f"INSERT INTO users (username, password, otp_secret) VALUES ('{username}', '{stored_password}', '{otp_secret}')"
                 get_db().execute(query)
 
             # ==============================
             # CORREGIDO: Aplicando parametrización
             # ==============================
             else:
-                query = "INSERT INTO users (username, password) VALUES (?, ?)"
-                get_db().execute(query, (username, stored_password))
+                query = "INSERT INTO users (username, password, otp_secret) VALUES (?, ?, ?)"
+                get_db().execute(query, (username, stored_password, otp_secret))
 
             get_db().commit()
+
+            if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
+                uri = pyotp.TOTP(otp_secret).provisioning_uri(
+                    name=username,
+                    issuer_name="VulnApp"
+                )
+                img = qrcode.make(uri)
+                img.save(f"static/{username}_qr.png")
+
             msg = f"Usuario {username} creado correctamente."
 
         except Exception as e:
@@ -203,9 +222,14 @@ def login():
             # ==================================================
             if authenticated:
                 session.permanent = True               # Pone en funcionamiento el lifetime de la sesión
-                session['user_id'] = user[0]
-                session['username'] = user[1]
-                return redirect(url_for('dashboard'))
+                if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
+                    session["pending_user"] = user[0]
+                    session["username"] = user[1]
+                    return redirect(url_for("verify_2fa"))
+                else:
+                    session['user_id'] = user[0]
+                    session['username'] = user[1]
+                    return redirect(url_for('dashboard'))
             
             # ==================================================
             # LOGIN INCORRECTO
@@ -227,16 +251,6 @@ def dashboard():
         session.clear()
         return redirect(url_for('login'))
     return render_template('dashboard.html', username=session.get('username'))
-
-@app.route('/users')
-def users():
-    if 'user_id' not in session:
-        session.clear()
-        return redirect(url_for('login'))
-    cur = get_db().execute("SELECT id, username FROM users")
-    users = cur.fetchall()
-    cur.close()
-    return render_template('users.html', users=users)
 
 @app.route('/file')
 def file():
@@ -268,6 +282,34 @@ def file():
         abort(403)
 
     return send_file(allowed_files[filename], as_attachment=True)
+
+@app.route('/users')
+def users():
+    if 'user_id' not in session:
+        session.clear()
+        return redirect(url_for('login'))
+    cur = get_db().execute("SELECT id, username FROM users")
+    users = cur.fetchall()
+    cur.close()
+    return render_template('users.html', users=users)
+
+@app.route("/verify-2fa", methods=["GET","POST"])
+def verify_2fa():
+    if "pending_user" not in session:                   # Voy por aqui, no se si esto está bien
+        return redirect(url_for("login"))
+    if request.method == "POST":
+        code = request.form["code"]
+        cur = get_db().execute(
+            "SELECT otp_secret FROM users WHERE id=?",
+            (session["pending_user"],)
+        )
+        secret = cur.fetchone()[0]
+        totp = pyotp.TOTP(secret)
+        if totp.verify(code):
+            session["user_id"] = session["pending_user"]
+            session.pop("pending_user")
+            return redirect(url_for("dashboard"))
+    return render_template("verify2fa.html")
 
 @app.route('/fetch')
 def fetch():
