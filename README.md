@@ -71,13 +71,16 @@ TFG/
 │ └── Prueba_A08_Software and Data Integrity Failures.txt
 ├── SecLists/
 ├── static/
+│ ├── QRs_users/
 │ └── style.css
 ├── templates/
 │ ├── base.html
 │ ├── dashboard.html
 │ ├── login.html
 │ ├── register.html
-│ └── users.html
+│ ├── setup2fa.html
+│ ├── users.html
+│ └── verify2fa.html
 ├── README.md
 ├── VulnApp.py
 ├── cert.pem
