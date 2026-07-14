@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Verificación en dos pasos</title>
+</head>
+<body>
+    <h2>Autenticación en dos factores</h2>
+    <p>Introduce el código de 6 dígitos generado por tu aplicación de autenticación.</p>
+    {% if msg %}
+        <p style="color:red">{{ msg }}</p>
+    {% endif %}
+    <form method="POST">
+        <label for="code">Código:</label>
+        <input
+            type="text"
+            id="code"
+            name="code"
+            maxlength="6"
+            pattern="[0-9]{6}"
+            required
+            autofocus>
+        <br><br>
+        <button type="submit">Verificar</button>
+    </form>
+    <br>
+    <a href="{{ url_for('login') }}">Volver al login</a>
+</body>
+</html>

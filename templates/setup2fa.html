@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurar 2FA</title>
+</head>
+<body>
+    <h2>Autenticación en dos factores</h2>
+    <p>El usuario <strong>{{ username }}</strong> se ha registrado correctamente.</p>
+    <p>Antes de iniciar sesión debes escanear este código QR con Google Authenticator, Microsoft Authenticator o Authy.</p>
+    <img src="{{ url_for('static', filename=qr) }}" alt="Código QR">
+    <p>Una vez añadido, la aplicación generará un código nuevo de 6 dígitos cada 30 segundos.</p>
+    <p style="color: red;">Asegúrate de haber escaneado el código QR antes de continuar. Si no lo haces, no podrás completar el inicio de sesión.</p>
+    <form action="{{ url_for('login') }}">
+        <button type="submit">He escaneado el código QR</button>
+    </form>
+</body>
+</html>

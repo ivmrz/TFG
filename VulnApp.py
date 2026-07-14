@@ -161,8 +161,11 @@ def register():
                     issuer_name="VulnApp"
                 )
                 img = qrcode.make(uri)
-                img.save(f"static/{username}_qr.png")
-
+                qr_folder = os.path.join(app.static_folder, "QRs_users")
+                os.makedirs(qr_folder, exist_ok=True)
+                img.save(os.path.join(qr_folder, f"{username}_qr.png"))
+                return render_template("setup2fa.html", username=username, qr=f"QRs_users/{username}_qr.png")
+            
             msg = f"Usuario {username} creado correctamente."
 
         except Exception as e:
@@ -221,12 +224,12 @@ def login():
             # LOGIN CORRECTO
             # ==================================================
             if authenticated:
-                session.permanent = True               # Pone en funcionamiento el lifetime de la sesión
                 if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
                     session["pending_user"] = user[0]
                     session["username"] = user[1]
                     return redirect(url_for("verify_2fa"))
                 else:
+                    session.permanent = True                    # Pone en funcionamiento el lifetime de la sesión
                     session['user_id'] = user[0]
                     session['username'] = user[1]
                     return redirect(url_for('dashboard'))
@@ -295,8 +298,9 @@ def users():
 
 @app.route("/verify-2fa", methods=["GET","POST"])
 def verify_2fa():
-    if "pending_user" not in session:                   # Voy por aqui, no se si esto está bien
+    if "pending_user" not in session:
         return redirect(url_for("login"))
+    msg = ""
     if request.method == "POST":
         code = request.form["code"]
         cur = get_db().execute(
@@ -304,12 +308,17 @@ def verify_2fa():
             (session["pending_user"],)
         )
         secret = cur.fetchone()[0]
+        cur.close()
+        if not secret:
+            abort(404)
         totp = pyotp.TOTP(secret)
         if totp.verify(code):
             session["user_id"] = session["pending_user"]
             session.pop("pending_user")
+            session.permanent = True
             return redirect(url_for("dashboard"))
-    return render_template("verify2fa.html")
+        msg = "Código de autenticación incorrecto"
+    return render_template("verify2fa.html", msg=msg)
 
 @app.route('/fetch')
 def fetch():
