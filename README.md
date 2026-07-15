@@ -36,23 +36,24 @@ No debe desplegarse en entornos de producción ni exponerse a Internet.
 - Requests
 - HTML / Bootstrap
 - Jinja2
+- Qrcode
 
 ## Instalación y ejecución
 
-Con el repositorio clonado o descargado:
+Con el repositorio clonado o descargado realice los siguientes pasos en orden:
 
-- python -m venv venv
-- source venv/bin/activate   # Linux/Mac
-- venv\Scripts\activate      # Windows
-- pip install -r requirements.txt
-- python VulnApp.py
+- Primero ejecute "python -m venv venv"
+- Si está en Linux/Mac ejecute "source venv/bin/activate"
+- Si está en Windows ejecute en su lugar "venv\Scripts\activate"
+- Ahora ejecute "pip install -r requirements.txt"
+- Por último ejecute "python VulnApp.py" con la configuración deseada
 
 La aplicación estará disponible en: http://localhost:8000 o https://localhost:8000
 
 ## Usuarios por defecto
+NOTA:  Debe tener las variables PASSWORD_HASHING y TWO_FACTOR_AUTHENTICATION = False
 
-admin / admin123
-
+admin / admin123                            
 user / password
 
 ## Modo seguro
