@@ -69,7 +69,8 @@ TFG/
 │ ├── A05_evil.html
 │ ├── Ejemplo análisis profesional de CVEs.xlsx
 │ ├── MD5_cracker.py
-│ └── Prueba_A08_Software and Data Integrity Failures.txt
+│ ├── Prueba_A08_Software and Data Integrity Failures.txt
+│ └── web_stresser.py
 ├── SecLists/
 ├── static/
 │ ├── QRs_users/
