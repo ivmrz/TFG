@@ -25,7 +25,7 @@ class SecurityConfig:
     # Establecer que la sesión sea casi permanente (SESSION_LIFETIME_PROTECTION = False) o no (SESSION_LIFETIME_PROTECTION = True)
     SESSION_LIFETIME_PROTECTION = SECURE_MODE
     # Usar contraseñas en texto plano (PASSWORD_HASHING = False) o hasheadas con scrypt (PASSWORD_HASHING = True y CRYPTO_PROTECTION = True)
-    PASSWORD_HASHING = SECURE_MODE
+    PASSWORD_HASHING = False
     # Usar contraseñas sin salt (CRYPTO_PROTECTION = False y PASSWORD_HASHING = True) o hasheadas con scrypt (CRYPTO_PROTECTION = True y PASSWORD_HASHING = True)
     CRYPTO_PROTECTION = SECURE_MODE
     # Permitir SQL_Injection (SQL_INJECTION_PROTECTION = False) o no (SQL_INJECTION_PROTECTION = True)
@@ -35,7 +35,7 @@ class SecurityConfig:
     # Permitir descargar cualquier archivo (FILE_ACCESS_PROTECTION = False) o no (FILE_ACCESS_PROTECTION = True)
     FILE_ACCESS_PROTECTION = SECURE_MODE
     # Permitir acceso sin 2FA (TWO_FACTOR_AUTHENTICATION = False) o con 2FA (TWO_FACTOR_AUTHENTICATION = True)
-    TWO_FACTOR_AUTHENTICATION = SECURE_MODE
+    TWO_FACTOR_AUTHENTICATION = False
     # Permitir acceder a cualquier dirección url (SSRF_PROTECTION = False) o no (SSRF_PROTECTION = True)
     SSRF_PROTECTION = SECURE_MODE
     # Lanzar la app con protocolo HTTP (HTTPS_PROTECTION = False) o HTTPS (HTTPS_PROTECTION = True)
