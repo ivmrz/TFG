@@ -3,6 +3,7 @@ import os
 import hashlib
 import pyotp
 import qrcode
+import re
 import logging
 import requests
 from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
@@ -12,9 +13,9 @@ from urllib.parse import urlparse
 
 app = Flask(__name__)
 
-# ==================================================
-# Elegir App vulnerable o segura
-# ==================================================
+# ==================================
+# Elegir VulnApp vulnerable o segura
+# ==================================
 class SecurityConfig:
     # Modo general seguro (SECURE_MODE = True) o vulnerable (SECURE_MODE = False)
     SECURE_MODE = True
@@ -36,14 +37,18 @@ class SecurityConfig:
     FILE_ACCESS_PROTECTION = SECURE_MODE
     # Permitir acceso sin 2FA (TWO_FACTOR_AUTHENTICATION = False) o con 2FA (TWO_FACTOR_AUTHENTICATION = True)
     TWO_FACTOR_AUTHENTICATION = False
+    # Permitir intentos de login ilimitados (LOGIN_ATTEMPTS_PROTECTION = False) o limitados (LOGIN_ATTEMPTS_PROTECTION = True)
+    LOGIN_ATTEMPTS_PROTECTION = SECURE_MODE
+    # Permitir contraseñas inseguras (SPASSWORD_POLICY_PROTECTION = False) o robustas (PASSWORD_POLICY_PROTECTION = True)
+    PASSWORD_POLICY_PROTECTION = SECURE_MODE
     # Permitir acceder a cualquier dirección url (SSRF_PROTECTION = False) o no (SSRF_PROTECTION = True)
     SSRF_PROTECTION = SECURE_MODE
     # Lanzar la app con protocolo HTTP (HTTPS_PROTECTION = False) o HTTPS (HTTPS_PROTECTION = True)
     HTTPS_PROTECTION = False
 
-# ==================================================
-# Monitoreo de logs
-# ==================================================
+#----------------------------------------------------------------------------------------------------------------------------------
+# MONITOREO DE LOGS
+
 security_logger = logging.getLogger("security")
 security_logger.setLevel(logging.WARNING)
 handler = logging.FileHandler("security.log")
@@ -53,50 +58,62 @@ formatter = logging.Formatter(
 handler.setFormatter(formatter)
 security_logger.addHandler(handler)
 
-# ==================================================
+#----------------------------------------------------------------------------------------------------------------------------------
 # SECRET KEY CONFIGURATION
-# ==================================================
+
 if SecurityConfig.SECRET_KEY_PROTECTION:
+    # ===================================
     # CORREGIDO: clave aleatoria y segura
+    # ===================================
     app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32)
 
 else:
+    # ==============================
     # VULNERABLE: clave fija y débil
+    # ==============================
     app.secret_key = 'dev-secret-key'
 
-# ==================================================
+#----------------------------------------------------------------------------------------------------------------------------------
 # SESSION COOKIE SECURITY
-# ==================================================
+
 if SecurityConfig.SESSION_COOKIE_PROTECTION:
+    # =============================
     # CORREGIDO: cookie inaccesible
+    # =============================
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True
     )
 
 else:
+    # =================================================
     # VULNERABLE: cookie accesible por JavaScript (XSS)
+    # =================================================
     app.config.update(
         SESSION_COOKIE_HTTPONLY=False
     )
 
-# ==================================================
+#----------------------------------------------------------------------------------------------------------------------------------
 # SESSION LIFETIME CONFIGURATION
-# ==================================================
+
 if SecurityConfig.SESSION_LIFETIME_PROTECTION:
+    # ======================================================
     # CORREGIDO: sesión caduca tras 5 minutos de inactividad
+    # ======================================================
     app.config.update(
         PERMANENT_SESSION_LIFETIME=timedelta(minutes=5)
     )
 
 else:
+    # ================================================
     # VULNERABLE: sesión demasiado larga o persistente
+    # ================================================
     app.config.update(
         PERMANENT_SESSION_LIFETIME=timedelta(days=365)
     )
 
-# ==================================================
-# Métodos para gestionar la BD
-# ==================================================
+#----------------------------------------------------------------------------------------------------------------------------------
+# MÉTODOS PARA GESTIONAR LA BD
+
 DATABASE = os.path.join(os.path.dirname(__file__), 'vulnapp.db')
 
 def get_db():
@@ -112,9 +129,9 @@ def close_connection(exception):
         db.close()
 
 #----------------------------------------------------------------------------------------------------------------------------------
-# ==================================================
+# ==============================
 # Endpoints de la aplicación web
-# ==================================================
+# ==============================
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -123,38 +140,68 @@ def register():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
         try:
+            # Política de contraseñas
+            if SecurityConfig.PASSWORD_POLICY_PROTECTION:
+                # ===============================
+                # CORREGIDO: Contraseñas robustas
+                # ===============================
+                if len(password) < 8:
+                    raise Exception("La contraseña debe tener al menos 8 caracteres.")
+                if not re.search(r"[A-Z]", password):
+                    raise Exception("Debe contener una mayúscula.")
+                if not re.search(r"[a-z]", password):
+                    raise Exception("Debe contener una minúscula.")
+                if not re.search(r"\d", password):
+                    raise Exception("Debe contener un número.")
+                if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+                    raise Exception("Debe contener un carácter especial.")
+                
+            # Almacenamiento de contraseñas
             if not SecurityConfig.PASSWORD_HASHING:
-                # Texto plano
+                # =======================
+                # VULNERABLE: Texto plano
+                # =======================
                 stored_password = password
             elif SecurityConfig.CRYPTO_PROTECTION:
-                # Werkzeug scrypt
+                # ==========================
+                # CORREGIDO: Werkzeug scrypt
+                # ==========================
                 stored_password = generate_password_hash(password)
             else:
-                # MD5
+                # ===============
+                # VULNERABLE: MD5
+                # ===============
                 stored_password = hashlib.md5(password.encode()).hexdigest()
             
+            # 2 Factor Authentication
             if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
-                # Se genera el secreto para el 2FA
+                # ===========================================
+                # CORREGIDO: Se genera el secreto para el 2FA
+                # ===========================================
                 otp_secret = pyotp.random_base32()
             else:
+                # ==============================================
+                # VULNERABLE: No hay otp_secret -> no existe 2FA
+                # ==============================================
                 otp_secret = None
 
-            # ==============================
-            # VULNERABLE: Posible SQL INJECTION
-            # ==============================
+            # Consulta para añadir usuario, contraseña y otp_secret a la Base de Datos
             if not SecurityConfig.SQL_INJECTION_PROTECTION:
+                # =================================
+                # VULNERABLE: Posible SQL INJECTION
+                # =================================
                 query = f"INSERT INTO users (username, password, otp_secret) VALUES ('{username}', '{stored_password}', '{otp_secret}')"
                 get_db().execute(query)
-
-            # ==============================
-            # CORREGIDO: Aplicando parametrización
-            # ==============================
             else:
+                # ====================================
+                # CORREGIDO: Aplicando parametrización
+                # ====================================
                 query = "INSERT INTO users (username, password, otp_secret) VALUES (?, ?, ?)"
                 get_db().execute(query, (username, stored_password, otp_secret))
 
             get_db().commit()
 
+            # 2 Factor Authentication
             if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
                 uri = pyotp.TOTP(otp_secret).provisioning_uri(
                     name=username,
@@ -179,19 +226,17 @@ def login():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
         try:
-            # ==================================================
-            # VULNERABLE: Posible SQL INJECTION
-            # ==================================================
-            if not SecurityConfig.SQL_INJECTION_PROTECTION:         # Si SQL_INJECTION_PROTECTION = False, usuarios con hashing no funcionan
-                # Consulta vulnerable
+            # Consulta para comprobar el login del usuario
+            if not SecurityConfig.SQL_INJECTION_PROTECTION:     # Si SQL_INJECTION_PROTECTION = False, usuarios con hashing no funcionan
+                # =================================
+                # VULNERABLE: Posible SQL INJECTION
+                # =================================
                 query = f"SELECT id, username FROM users WHERE username = '{username}' AND password = '{password}'"
                 cur = get_db().execute(query)
-
-            # ==================================================
-            # CORREGIDO: Aplicando parametrización
-            # ==================================================
             else:
-                # Consulta segura
+                # ====================================
+                # CORREGIDO: Aplicando parametrización
+                # ====================================
                 if not SecurityConfig.PASSWORD_HASHING:
                     query = "SELECT id, username FROM users WHERE username = ? AND password = ?"
                     cur = get_db().execute(query, (username, password))
@@ -201,11 +246,8 @@ def login():
             user = cur.fetchone()
             cur.close()
 
-            # ==================================================
-            # AUTENTICACIÓN: Con o sin aplicar Hashing
-            # ==================================================
+            # Comprobación de la contraseña introducida para la autenticación
             authenticated = False
-
             if not SecurityConfig.PASSWORD_HASHING or not SecurityConfig.SQL_INJECTION_PROTECTION:
                 # Texto plano
                 if user:
@@ -220,28 +262,31 @@ def login():
                 if user and user[2] == hashed:
                     authenticated = True
 
-            # ==================================================
-            # LOGIN CORRECTO
-            # ==================================================
+            # Login correcto en la aplicación
             if authenticated:
+                # Si 2FA está activado
                 if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
                     session["pending_user"] = user[0]
                     session["username"] = user[1]
                     return redirect(url_for("verify_2fa"))
+                # Si 2FA no está activado
                 else:
                     session.permanent = True                    # Pone en funcionamiento el lifetime de la sesión
                     session['user_id'] = user[0]
                     session['username'] = user[1]
                     return redirect(url_for('dashboard'))
             
-            # ==================================================
-            # LOGIN INCORRECTO
-            # ==================================================
+            # Login incorrecto en la aplicación
             else:
                 if SecurityConfig.LOGIN_MESSAGE_PROTECTION:
+                    # =====================================================
+                    # CORREGIDO: No se muestra ninguna información sensible
+                    # =====================================================
                     msg = "Login fallido."
                 else:
-                    # Vulnerable: refleja datos introducidos
+                    # ======================================
+                    # VULNERABLE: Refleja datos introducidos
+                    # ======================================
                     msg = "Login fallido para: " + username
 
         except Exception as e:
@@ -257,20 +302,16 @@ def dashboard():
 
 @app.route('/file')
 def file():
-    # ==================================================
-    # VULNERABLE: Permite descargar cualquier archivo y sin autenticación
-    # ==================================================
     if not SecurityConfig.FILE_ACCESS_PROTECTION:
+        # ===================================================================================================
+        # VULNERABLE: Permite descargar cualquier archivo sin autenticación, validación o restricción de ruta
+        # ===================================================================================================
         filename = request.args.get('name', '')
-        # Sin autenticación
-        # Sin validación
-        # Sin restricciones de ruta
         return send_file(filename, as_attachment=True)
 
-    # ==================================================
+    # ========================================================================
     # CORREGIDO: Solo permite descargar manual.txt y se requiere autenticación
-    # ==================================================
-    # Requerir autenticación
+    # ========================================================================
     if 'user_id' not in session:
         return redirect(url_for('login'))
     filename = request.args.get('name', '')
@@ -326,16 +367,16 @@ def fetch():
         return redirect(url_for('login'))
     url = request.args.get('url', '')
 
-    # ==================================================
-    # VULNERABLE: Permite acceder a cualquier URL (Incluido localhost)
-    # ==================================================
     if not SecurityConfig.SSRF_PROTECTION:
+        # ================================================================
+        # VULNERABLE: Permite acceder a cualquier URL (Incluido localhost)
+        # ================================================================
         response = requests.get(url)
         return response.text
 
-    # ==================================================
+    # ==========================================
     # CORREGIDO: Bloquea algunos hosts sensibles
-    # ==================================================
+    # ==========================================
     parsed = urlparse(url)
     blocked_hosts = [
         "127.0.0.1",
@@ -368,9 +409,10 @@ def logout():
     return redirect(url_for('login'))
 
 #----------------------------------------------------------------------------------------------------------------------------------
-# ==================================================
+# ==============
 # Main de la app
-# ==================================================
+# ==============
+
 if __name__ == '__main__':
     # Crear la BD si no existe a partir de schema.sql
     if not os.path.exists(DATABASE):
@@ -379,16 +421,18 @@ if __name__ == '__main__':
                 conn.executescript(f.read())
         print("Base de datos creada: vulnapp.db")
 
-    # ==================================================
-    # VULNERABLE: Protocolo HTTP
-    # ==================================================
     if not SecurityConfig.HTTPS_PROTECTION:
+        # ==========================
+        # VULNERABLE: Protocolo HTTP
+        # ==========================
         print("[MODO VULNERABLE] Aplicación ejecutándose en HTTP")
         app.run(host='0.0.0.0', port=8000, debug=True)
 
-    # ==================================================
-    # CORREGIDO: Protocolo HTTPS con certificados
-    # ==================================================
     else:
+        # ===========================================
+        # CORREGIDO: Protocolo HTTPS con certificados
+        # ===========================================
         print("[MODO SEGURO] Aplicación ejecutándose en HTTPS")
         app.run(host='0.0.0.0', port=8000, debug=True, ssl_context=('cert.pem', 'key.pem'))
+
+#----------------------------------------------------------------------------------------------------------------------------------
