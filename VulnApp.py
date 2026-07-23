@@ -146,16 +146,27 @@ def register():
                 # CORREGIDO: Contraseñas robustas
                 # ===============================
                 if len(password) < 8:
-                    raise Exception("La contraseña debe tener al menos 8 caracteres.")
+                    raise Exception("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.")
                 if not re.search(r"[A-Z]", password):
-                    raise Exception("Debe contener una mayúscula.")
+                    raise Exception("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.")
                 if not re.search(r"[a-z]", password):
-                    raise Exception("Debe contener una minúscula.")
+                    raise Exception("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.")
                 if not re.search(r"\d", password):
-                    raise Exception("Debe contener un número.")
-                if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-                    raise Exception("Debe contener un carácter especial.")
-                
+                    raise Exception("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.")
+                if not re.search(r"[!@#$%^&*(),.?\"-_:{}|<>]", password):
+                    raise Exception("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.")
+            
+            # Comprobar si el nombre de usuario ya existe
+            cur = get_db().execute(
+                "SELECT 1 FROM users WHERE username = ?",
+                (username,)
+            )
+            if cur.fetchone():
+                cur.close()
+                msg = "Nombre de usuario no disponible."
+                return render_template("register.html", msg=msg)
+            cur.close()
+
             # Almacenamiento de contraseñas
             if not SecurityConfig.PASSWORD_HASHING:
                 # =======================
