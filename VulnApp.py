@@ -8,8 +8,12 @@ import logging
 import requests
 from flask import Flask, request, g, redirect, render_template, session, url_for, send_file, abort
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import timedelta
+from datetime import timedelta, datetime
 from urllib.parse import urlparse
+
+print("===================================")
+print("INICIANDO APLICACIÓN")
+print("===================================")
 
 app = Flask(__name__)
 
@@ -45,6 +49,11 @@ class SecurityConfig:
     SSRF_PROTECTION = SECURE_MODE
     # Lanzar la app con protocolo HTTP (HTTPS_PROTECTION = False) o HTTPS (HTTPS_PROTECTION = True)
     HTTPS_PROTECTION = False
+
+#----------------------------------------------------------------------------------------------------------------------------------
+# ESTRUCTURA PARA EL MONITOREO DE INTENTOS INICIO SESIÓN
+
+login_attempts = {}
 
 #----------------------------------------------------------------------------------------------------------------------------------
 # MONITOREO DE LOGS
@@ -222,6 +231,7 @@ def register():
                 qr_folder = os.path.join(app.static_folder, "QRs_users")
                 os.makedirs(qr_folder, exist_ok=True)
                 img.save(os.path.join(qr_folder, f"{username}_qr.png"))
+                # Redirige al usuario a la pestaña con su QR personal para activar 2FA
                 return render_template("setup2fa.html", username=username, qr=f"QRs_users/{username}_qr.png")
             
             msg = f"Usuario {username} creado correctamente."
@@ -237,6 +247,21 @@ def login():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
         try:
+            # Control de intentos para inicio de sesión por usuario
+            if SecurityConfig.LOGIN_ATTEMPTS_PROTECTION:
+                # ==================================================
+                # CORREGIDO: Límite de intentos de inicio de sesión
+                # ==================================================
+                if username in login_attempts:
+                    attempts, blocked_until = login_attempts[username]
+                    if blocked_until and datetime.now() < blocked_until:
+                        remaining = int((blocked_until - datetime.now()).total_seconds())
+                        msg = f"Cuenta bloqueada. Inténtelo de nuevo en {remaining} segundos."
+                        return render_template("login.html", msg=msg)
+                    if blocked_until and datetime.now() >= blocked_until:
+                        # Reinicia el contador de intentos para el usuario
+                        login_attempts.pop(username, None)
+
             # Consulta para comprobar el login del usuario
             if not SecurityConfig.SQL_INJECTION_PROTECTION:     # Si SQL_INJECTION_PROTECTION = False, usuarios con hashing no funcionan
                 # =================================
@@ -275,30 +300,56 @@ def login():
 
             # Login correcto en la aplicación
             if authenticated:
+                # Si LOGIN_ATTEMPTS_PROTECTION está activado
+                if SecurityConfig.LOGIN_ATTEMPTS_PROTECTION:
+                    # Reinicia el contador de intentos para el usuario
+                    login_attempts.pop(username, None)
+
                 # Si 2FA está activado
                 if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
                     session["pending_user"] = user[0]
                     session["username"] = user[1]
+                    # Se redirige al panel de verificación 2FA
                     return redirect(url_for("verify_2fa"))
                 # Si 2FA no está activado
                 else:
                     session.permanent = True                    # Pone en funcionamiento el lifetime de la sesión
                     session['user_id'] = user[0]
                     session['username'] = user[1]
+                    # Se redirige al dashboard
                     return redirect(url_for('dashboard'))
             
             # Login incorrecto en la aplicación
             else:
-                if SecurityConfig.LOGIN_MESSAGE_PROTECTION:
-                    # =====================================================
-                    # CORREGIDO: No se muestra ninguna información sensible
-                    # =====================================================
-                    msg = "Login fallido."
-                else:
-                    # ======================================
-                    # VULNERABLE: Refleja datos introducidos
-                    # ======================================
-                    msg = "Login fallido para: " + username
+                # Si LOGIN_ATTEMPTS_PROTECTION está activado
+                if SecurityConfig.LOGIN_ATTEMPTS_PROTECTION:
+                    # Se suma +1 al número de intentos del usuario
+                    attempts, blocked_until = login_attempts.get(username, (0, None))
+                    attempts += 1
+                    # Si los intentos superan 5, se bloquea el login durante 5 minutos para ese usuario
+                    if attempts >= 5:
+                        blocked_until = datetime.now() + timedelta(minutes=5)
+                        # Se registra el warning en el archivo de logs
+                        security_logger.warning(
+                            f"[A07 DETECTADO] Cuenta '{username}' bloqueada tras 5 intentos fallidos desde la IP {request.remote_addr}"
+                        )
+                        msg = "Demasiados intentos. Cuenta bloqueada durante 5 minutos."
+                    # Si no los supera, se indica cuántos lleva realizados
+                    else:
+                        msg = f"Login fallido. Intento {attempts}/5"
+                    login_attempts[username] = (attempts, blocked_until)
+                # Si LOGIN_ATTEMPTS_PROTECTION no está activado
+                else:   
+                    if SecurityConfig.LOGIN_MESSAGE_PROTECTION:
+                        # =====================================================
+                        # CORREGIDO: No se muestra ninguna información sensible
+                        # =====================================================
+                        msg = "Login fallido."
+                    else:
+                        # ======================================
+                        # VULNERABLE: Refleja datos introducidos
+                        # ======================================
+                        msg = "Login fallido para: " + username
 
         except Exception as e:
             msg = "Error: " + str(e)
@@ -329,6 +380,7 @@ def file():
 
     # Lista blanca de archivos permitidos
     allowed_files = {'manual.txt': os.path.join(os.path.dirname(__file__), 'manual.txt')}
+    # Si se intenta acceder a un archivo no deseado, se registra el warning en el archivo de logs
     if filename not in allowed_files:
         security_logger.warning(
             f"[A01 DETECTADO] Intento de acceso no autorizado "
@@ -343,6 +395,7 @@ def users():
     if 'user_id' not in session:
         session.clear()
         return redirect(url_for('login'))
+    # Genera la página con la tabla de usuarios de la BD
     cur = get_db().execute("SELECT id, username FROM users")
     users = cur.fetchall()
     cur.close()
@@ -354,20 +407,26 @@ def verify_2fa():
         return redirect(url_for("login"))
     msg = ""
     if request.method == "POST":
+        # Código introducido por el usuario
         code = request.form["code"]
+        # Obtiene el secreto asociado al usuario de la BD
         cur = get_db().execute(
             "SELECT otp_secret FROM users WHERE id=?",
             (session["pending_user"],)
         )
         secret = cur.fetchone()[0]
         cur.close()
+        # Si no hay un secreto configurado para el usuario, se devuelve error
         if not secret:
             abort(404)
+        # Crea el objeto que representa el autenticador TOTP asociado al secreto del usuario 
         totp = pyotp.TOTP(secret)
+        # Verifica si el código del usuario es válido
         if totp.verify(code):
+            # Inicia la sesión correctamente
             session["user_id"] = session["pending_user"]
             session.pop("pending_user")
-            session.permanent = True
+            session.permanent = True                            # Pone en funcionamiento el lifetime de la sesión
             return redirect(url_for("dashboard"))
         msg = "Código de autenticación incorrecto"
     return render_template("verify2fa.html", msg=msg)
@@ -393,6 +452,7 @@ def fetch():
         "127.0.0.1",
         "localhost"
     ]
+    # Si se intenta acceder con un host no deseado, se registra el warning en el archivo de logs
     if parsed.hostname in blocked_hosts:
         security_logger.warning(
             f"[A10 DETECTADO] Intento de SSRF hacia "
@@ -411,7 +471,7 @@ def internal():
     return """
     <h2>Panel interno</h2>
     <p>Backup database: vulnapp.db</p>
-    <p>Admin token: SECRET-ADMIN-KEY</p>
+    <p>Admin token: dev-secret-key</p>
     """
 
 @app.route('/logout')
@@ -431,7 +491,7 @@ if __name__ == '__main__':
             with open('schema.sql', 'r', encoding='utf-8') as f:
                 conn.executescript(f.read())
         print("Base de datos creada: vulnapp.db")
-
+    # Lanza la web con HTTP o HTTPS
     if not SecurityConfig.HTTPS_PROTECTION:
         # ==========================
         # VULNERABLE: Protocolo HTTP

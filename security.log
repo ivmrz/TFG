@@ -6,3 +6,4 @@
 2026-06-12 11:47:07,273 - WARNING - [A01 DETECTADO] Intento de acceso no autorizado al archivo 'vulnapp.db' desde IP 192.168.0.9
 2026-06-12 11:47:07,955 - WARNING - [A01 DETECTADO] Intento de acceso no autorizado al archivo 'vulnapp.db' desde IP 192.168.0.9
 2026-06-12 11:47:18,787 - WARNING - [A10 DETECTADO] Intento de SSRF hacia '127.0.0.1' desde IP 192.168.0.9
+2026-07-24 14:30:45,701 - WARNING - [A07 DETECTADO] Cuenta 'ivmr' bloqueada tras 5 intentos fallidos desde la IP 192.168.0.9
