@@ -145,6 +145,7 @@ def close_connection(exception):
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     msg = ''
+    msg_type= "info"
     if request.method == 'POST':
         username = request.form.get('username', '')
         password = request.form.get('password', '')
@@ -173,7 +174,8 @@ def register():
             if cur.fetchone():
                 cur.close()
                 msg = "Nombre de usuario no disponible."
-                return render_template("register.html", msg=msg)
+                msg_type = "danger"
+                return render_template("register.html", msg=msg, msg_type=msg_type)
             cur.close()
 
             # Almacenamiento de contraseñas
@@ -235,10 +237,12 @@ def register():
                 return render_template("setup2fa.html", username=username, qr=f"QRs_users/{username}_qr.png")
             
             msg = f"Usuario {username} creado correctamente."
+            msg_type = "success"
 
         except Exception as e:
-            msg = "Error: " + str(e)
-    return render_template('register.html', msg=msg)
+            msg = str(e)
+            msg_type = "danger"
+    return render_template('register.html', msg=msg, msg_type=msg_type)
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
