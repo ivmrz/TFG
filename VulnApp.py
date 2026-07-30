@@ -501,7 +501,7 @@ def fetch():
         "127.0.0.1",
         "localhost"
     ]
-    # Si se intenta acceder con un host no deseado, registra el warning en el archivo de logs
+    # Si se intenta acceder con un host no deseado, registra el warning en el archivo de logs y devuelve error 403
     if parsed.hostname in blocked_hosts:
         security_logger.warning(f"[A10 DETECTADO] El usuario '{session["username"]}' intentó SSRF hacia '{parsed.hostname}' desde IP {request.remote_addr}")
         abort(403)
