@@ -5,6 +5,6 @@ CREATE TABLE users (
   otp_secret TEXT
 );
 
--- Solo funcionarán estos users predefinidos con TWO_FACTOR_AUTHENTICATION = False
-INSERT INTO users (username, password) VALUES ('admin', 'admin123');
-INSERT INTO users (username, password) VALUES ('user', 'password');
+-- Solo funcionarán estos users predefinidos con PASSWORD_HASHING y TWO_FACTOR_AUTHENTICATION = False
+INSERT INTO users (username, password, otp_secret) VALUES ('admin', 'admin123', NULL);
+INSERT INTO users (username, password, otp_secret) VALUES ('user', 'password', NULL);

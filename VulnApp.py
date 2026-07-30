@@ -30,7 +30,7 @@ class SecurityConfig:
     # Establecer que la sesión sea casi permanente (SESSION_LIFETIME_PROTECTION = False) o no (SESSION_LIFETIME_PROTECTION = True)
     SESSION_LIFETIME_PROTECTION = SECURE_MODE
     # Usar contraseñas en texto plano (PASSWORD_HASHING = False) o hasheadas con scrypt (PASSWORD_HASHING = True y CRYPTO_PROTECTION = True)
-    PASSWORD_HASHING = False
+    PASSWORD_HASHING = SECURE_MODE
     # Usar contraseñas sin salt (CRYPTO_PROTECTION = False y PASSWORD_HASHING = True) o hasheadas con scrypt (CRYPTO_PROTECTION = True y PASSWORD_HASHING = True)
     CRYPTO_PROTECTION = SECURE_MODE
     # Permitir SQL_Injection (SQL_INJECTION_PROTECTION = False) o no (SQL_INJECTION_PROTECTION = True)
@@ -40,7 +40,7 @@ class SecurityConfig:
     # Permitir descargar cualquier archivo (FILE_ACCESS_PROTECTION = False) o no (FILE_ACCESS_PROTECTION = True)
     FILE_ACCESS_PROTECTION = SECURE_MODE
     # Permitir acceso sin 2FA (TWO_FACTOR_AUTHENTICATION = False) o con 2FA (TWO_FACTOR_AUTHENTICATION = True)
-    TWO_FACTOR_AUTHENTICATION = False
+    TWO_FACTOR_AUTHENTICATION = SECURE_MODE
     # Permitir intentos de login ilimitados (LOGIN_ATTEMPTS_PROTECTION = False) o limitados (LOGIN_ATTEMPTS_PROTECTION = True)
     LOGIN_ATTEMPTS_PROTECTION = SECURE_MODE
     # Permitir contraseñas inseguras (SPASSWORD_POLICY_PROTECTION = False) o robustas (PASSWORD_POLICY_PROTECTION = True)
@@ -58,14 +58,41 @@ login_attempts = {}
 #----------------------------------------------------------------------------------------------------------------------------------
 # MONITOREO DE LOGS
 
+# Crea la carpeta "Logs" si no existe
+LOG_FOLDER = os.path.join(os.path.dirname(__file__),"Logs")
+os.makedirs(LOG_FOLDER, exist_ok=True)
+
+# Logger para eventos de funcionamiento
 security_logger = logging.getLogger("security")
-security_logger.setLevel(logging.WARNING)
-handler = logging.FileHandler("security.log")
-formatter = logging.Formatter(
-    '%(asctime)s - %(levelname)s - %(message)s'
+security_logger.setLevel(logging.INFO)
+# Todos los eventos INFO o WARNING se almacenan en el archivo "security.log"
+security_handler = logging.FileHandler(
+    os.path.join(LOG_FOLDER, "security.log"),
+    encoding="utf-8"
 )
-handler.setFormatter(formatter)
-security_logger.addHandler(handler)
+# Formato para cada línea del archivo "security.log"
+security_handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(message)s"
+    )
+)
+security_logger.addHandler(security_handler)
+
+# Logger para eventos críticos
+critical_logger = logging.getLogger("critical")
+critical_logger.setLevel(logging.CRITICAL)
+# Todos los eventos CRITICAL se almacenan en el archivo "critical.log"
+critical_handler = logging.FileHandler(
+    os.path.join(LOG_FOLDER, "critical.log"),
+    encoding="utf-8"
+)
+# Formato para cada línea del archivo "critical.log"
+critical_handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(message)s"
+    )
+)
+critical_logger.addHandler(critical_handler)
 
 #----------------------------------------------------------------------------------------------------------------------------------
 # SECRET KEY CONFIGURATION
@@ -223,6 +250,12 @@ def register():
 
             get_db().commit()
 
+            # Registra el log de nuevo usuario
+            security_logger.info(f"Nuevo usuario registrado: '{username}'")
+            # Muestra el mensaje de éxito por pantalla
+            msg = f"Usuario {username} creado correctamente."
+            msg_type = "success"
+
             # 2 Factor Authentication
             if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
                 uri = pyotp.TOTP(otp_secret).provisioning_uri(
@@ -235,9 +268,6 @@ def register():
                 img.save(os.path.join(qr_folder, f"{username}_qr.png"))
                 # Redirige al usuario a la pestaña con su QR personal para activar 2FA
                 return render_template("setup2fa.html", username=username, qr=f"QRs_users/{username}_qr.png")
-            
-            msg = f"Usuario {username} creado correctamente."
-            msg_type = "success"
 
         except Exception as e:
             msg = str(e)
@@ -313,32 +343,33 @@ def login():
                 if SecurityConfig.TWO_FACTOR_AUTHENTICATION:
                     session["pending_user"] = user[0]
                     session["username"] = user[1]
-                    # Se redirige al panel de verificación 2FA
+                    # Redirige al panel de verificación 2FA
                     return redirect(url_for("verify_2fa"))
                 # Si 2FA no está activado
                 else:
                     session.permanent = True                    # Pone en funcionamiento el lifetime de la sesión
                     session['user_id'] = user[0]
                     session['username'] = user[1]
-                    # Se redirige al dashboard
+                    security_logger.info(f"Usuario '{username}' inició sesión desde {request.remote_addr}")
+                    # Redirige al dashboard
                     return redirect(url_for('dashboard'))
             
             # Login incorrecto en la aplicación
             else:
                 # Si LOGIN_ATTEMPTS_PROTECTION está activado
                 if SecurityConfig.LOGIN_ATTEMPTS_PROTECTION:
-                    # Se suma +1 al número de intentos del usuario
+                    # Suma +1 al número de intentos del usuario
                     attempts, blocked_until = login_attempts.get(username, (0, None))
                     attempts += 1
-                    # Si los intentos superan 5, se bloquea el login durante 5 minutos para ese usuario
+                    # Si los intentos superan 5, bloquea el login durante 5 minutos para ese usuario
                     if attempts >= 5:
                         blocked_until = datetime.now() + timedelta(minutes=5)
-                        # Se registra el warning en el archivo de logs
-                        security_logger.warning(
-                            f"[A07 DETECTADO] Cuenta '{username}' bloqueada tras 5 intentos fallidos desde la IP {request.remote_addr}"
-                        )
                         msg = "Demasiados intentos. Cuenta bloqueada durante 5 minutos."
-                    # Si no los supera, se indica cuántos lleva realizados
+                        # Registra el log como warning en el archivo de logs
+                        security_logger.warning(f"[A07 DETECTADO] Cuenta '{username}' bloqueada tras 5 intentos fallidos desde la IP {request.remote_addr}")
+                        # Registra el log como critical en el archivo de logs
+                        critical_logger.critical(f"Posible ataque de fuerza bruta contra '{username}' desde {request.remote_addr}")
+                    # Si no los supera, indica cuántos lleva realizados
                     else:
                         msg = f"Login fallido. Intento {attempts}/5"
                     login_attempts[username] = (attempts, blocked_until)
@@ -384,12 +415,9 @@ def file():
 
     # Lista blanca de archivos permitidos
     allowed_files = {'manual.txt': os.path.join(os.path.dirname(__file__), 'manual.txt')}
-    # Si se intenta acceder a un archivo no deseado, se registra el warning en el archivo de logs
+    # Si se intenta acceder a un archivo no deseado, registra el warning en el archivo de logs y devuelve error 403
     if filename not in allowed_files:
-        security_logger.warning(
-            f"[A01 DETECTADO] Intento de acceso no autorizado "
-            f"al archivo '{filename}' desde IP {request.remote_addr}"
-        )
+        security_logger.warning(f"[A01 DETECTADO] El usuario '{session["username"]}' intentó acceder al archivo '{filename}' desde IP {request.remote_addr}")
         abort(403)
 
     return send_file(allowed_files[filename], as_attachment=True)
@@ -411,7 +439,7 @@ def verify_2fa():
         return redirect(url_for("login"))
     msg = ""
     if request.method == "POST":
-        # Código introducido por el usuario
+        # Inicializa una variable con el código introducido por el usuario
         code = request.form["code"]
         # Obtiene el secreto asociado al usuario de la BD
         cur = get_db().execute(
@@ -420,7 +448,7 @@ def verify_2fa():
         )
         secret = cur.fetchone()[0]
         cur.close()
-        # Si no hay un secreto configurado para el usuario, se devuelve error
+        # Si no hay un secreto configurado para el usuario, devuelve error 404
         if not secret:
             abort(404)
         # Crea el objeto que representa el autenticador TOTP asociado al secreto del usuario 
@@ -431,9 +459,26 @@ def verify_2fa():
             session["user_id"] = session["pending_user"]
             session.pop("pending_user")
             session.permanent = True                            # Pone en funcionamiento el lifetime de la sesión
+            security_logger.info(f"Usuario '{session["username"]}' inició sesión desde {request.remote_addr}")
             return redirect(url_for("dashboard"))
         msg = "Código de autenticación incorrecto"
     return render_template("verify2fa.html", msg=msg)
+
+@app.route("/logs")
+def logs():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    # Si se intenta acceder al endpoint con un user no permitido, registra el warning en el archivo de logs y devuelve error 403
+    if session.get("username") != "admin":
+        security_logger.warning(f"[A01 DETECTADO] El usuario '{session["username"]}' intentó acceder a la página '/Logs' desde IP {request.remote_addr}")
+        abort(403)
+    # Lee los archivos de logs
+    with open("Logs/security.log", "r", encoding="utf-8") as f:
+        security_logs = f.read()
+    with open("Logs/critical.log", "r", encoding="utf-8") as f:
+        critical_logs = f.read()
+    # Genera la página con el contenido
+    return render_template("logs.html",security_logs=security_logs, critical_logs=critical_logs)
 
 @app.route('/fetch')
 def fetch():
@@ -456,12 +501,9 @@ def fetch():
         "127.0.0.1",
         "localhost"
     ]
-    # Si se intenta acceder con un host no deseado, se registra el warning en el archivo de logs
+    # Si se intenta acceder con un host no deseado, registra el warning en el archivo de logs
     if parsed.hostname in blocked_hosts:
-        security_logger.warning(
-            f"[A10 DETECTADO] Intento de SSRF hacia "
-            f"'{parsed.hostname}' desde IP {request.remote_addr}"
-        )
+        security_logger.warning(f"[A10 DETECTADO] El usuario '{session["username"]}' intentó SSRF hacia '{parsed.hostname}' desde IP {request.remote_addr}")
         abort(403)
 
     response = requests.get(url, timeout=5)
@@ -469,9 +511,10 @@ def fetch():
 
 @app.route('/internal')
 def internal():
-    # Solo accesible desde localhost
+    # Si se intenta acceder con un host no deseado, devuelve error 403
     if request.remote_addr != '127.0.0.1':
         abort(403)
+    # Genera la página con el contenido
     return """
     <h2>Panel interno</h2>
     <p>Backup database: vulnapp.db</p>
@@ -480,6 +523,7 @@ def internal():
 
 @app.route('/logout')
 def logout():
+    security_logger.info(f"Usuario '{session['username']}' cerró sesión.")
     session.clear()
     return redirect(url_for('login'))
 
@@ -489,7 +533,7 @@ def logout():
 # ==============
 
 if __name__ == '__main__':
-    # Crear la BD si no existe a partir de schema.sql
+    # Crea la BD si no existe a partir de schema.sql
     if not os.path.exists(DATABASE):
         with sqlite3.connect(DATABASE) as conn:
             with open('schema.sql', 'r', encoding='utf-8') as f:

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Logs de Seguridad{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>Logs de la aplicación</h3>
+    </div>
+    <div class="card-body">
+        <h4>Security.log</h4>
+        <pre class="bg-light p-3 border rounded" style="max-height:300px; overflow-y:auto;">
+{{ security_logs }}
+        </pre>
+        <h4 class="mt-4">Critical.log</h4>
+        <pre class="bg-light p-3 border rounded" style="max-height:300px; overflow-y:auto;">
+{{ critical_logs }}
+        </pre>
+    </div>
+</div>
+{% endblock %}

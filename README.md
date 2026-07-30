@@ -65,6 +65,9 @@ La aplicación incluye versiones corregidas de las vulnerabilidades para su comp
 ```
 TFG/
 │
+├── Logs/
+│ ├── critical.log
+│ └── security.log
 ├── Pruebas/
 │ ├── A05_evil.html
 │ ├── Ejemplo análisis profesional de CVEs.xlsx
@@ -79,6 +82,7 @@ TFG/
 │ ├── base.html
 │ ├── dashboard.html
 │ ├── login.html
+│ ├── logs.html
 │ ├── register.html
 │ ├── setup2fa.html
 │ ├── users.html
@@ -90,7 +94,6 @@ TFG/
 ├── manual.txt
 ├── requirements.txt
 ├── schema.sql
-├── security.log
 └── vulnapp.db
 ```
 
